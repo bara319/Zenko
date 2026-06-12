@@ -97,7 +97,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
     <p style="font-size: 12px; color: #8aa5bd;">あなたの「讃えたい」が、誰かの宝物になります</p>
   </div>
   <button class="zbtn" onclick="go('tags')">善行を目撃した</button>
-  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.7 — カードはQRを読んだ人のブラウザに届きます</p>
+  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v2.0 — カードはQRを読んだ人のブラウザに届きます</p>
 </div>
 
 <div class="scr" id="tags">
@@ -244,7 +244,9 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
 const RANKS = {
   N: { name: 'いいひと', color: '#085041', sub: '#1D9E75', bd: '#9FE1CB', bg: 'linear-gradient(160deg, #EAFBF2, #C9F2DC 60%, #B2EAD2)', grad: ['#fff', '#9FE1CB', '#1D9E75'], holo: 'rgba(160,255,220,0.5)' },
   R: { name: '街のヒーロー', color: '#0C447C', sub: '#378ADD', bd: '#85B7EB', bg: 'linear-gradient(160deg, #EAF4FE, #BFDFF9 60%, #A8D2F4)', grad: ['#fff', '#9CCAF3', '#2f7fce'], holo: 'rgba(160,220,255,0.55)' },
-  SR: { name: '善行の達人', color: '#712B13', sub: '#D85A30', bd: '#F0997B', bg: 'linear-gradient(160deg, #FDEFEA, #FAD3C2 60%, #F7C0A8)', grad: ['#fff', '#F5C4B3', '#D85A30'], holo: 'rgba(255,190,160,0.55)' }
+  SR: { name: '善行の達人', color: '#712B13', sub: '#D85A30', bd: '#F0997B', bg: 'linear-gradient(160deg, #FDEFEA, #FAD3C2 60%, #F7C0A8)', grad: ['#fff', '#F5C4B3', '#D85A30'], holo: 'rgba(255,190,160,0.55)' },
+  UR: { name: '地球の恩人', color: '#633806', sub: '#BA7517', bd: '#EF9F27', bg: 'linear-gradient(160deg, #FDF4E0, #FBE0AC 60%, #F8D48A)', grad: ['#fff', '#FAC775', '#BA7517'], holo: 'rgba(255,215,130,0.6)' },
+  SE: { name: '名もなき聖人', color: '#3C3489', sub: '#7F77DD', bd: '#CECBF6', bg: 'linear-gradient(160deg, #FBFAFD, #EDE9F5 60%, #E2DCF2)', grad: ['#fff', '#CECBF6', '#7F77DD'], holo: 'rgba(200,170,255,0.65)' }
 };
 const QUOTES = [
   '親切は、どんなに小さくても無駄にならない。 — イソップ',
@@ -284,11 +286,28 @@ function weatherLabel(code) {
   if (code >= 95) return '雷雨';
   return '';
 }
-function judgeRank(code, hour, temp) {
-  if ((code >= 71 && code <= 77) || code === 85 || code === 86 || code >= 95) return 'SR';
-  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'R';
-  if (temp !== null && temp >= 35) return 'R';
-  if (hour < 7 || hour >= 22) return 'R';
+function moonAge(d) {
+  const synodic = 29.530588853;
+  const ref = Date.UTC(2000, 0, 6, 18, 14);
+  const days = (d.getTime() - ref) / 86400000;
+  return ((days % synodic) + synodic) % synodic;
+}
+function judgeRank(code, now, temp) {
+  const hour = now.getHours();
+  const min = now.getMinutes();
+  const offHours = hour < 7 || hour >= 22;
+  const snow = (code >= 71 && code <= 77) || code === 85 || code === 86;
+  const thunder = code >= 95;
+  const rain = (code >= 51 && code <= 67) || (code >= 80 && code <= 82);
+  const mmdd = (now.getMonth() + 1) + '-' + now.getDate();
+  const age = moonAge(now);
+  const fullMoon = Math.abs(age - 14.77) < 0.7;
+  if ((hour === 11 && min === 11) || (hour === 22 && min === 22)) return 'SE';
+  if (mmdd === '1-1' || mmdd === '12-31') return 'SE';
+  if (fullMoon && hour >= 18) return 'SE';
+  if (thunder || (snow && offHours) || (temp !== null && temp >= 38)) return 'UR';
+  if (snow || (temp !== null && temp >= 35) || (rain && offHours)) return 'SR';
+  if (rain || offHours) return 'R';
   return 'N';
 }
 
@@ -320,7 +339,7 @@ async function fetchContext() {
 function buildCardData() {
   const now = new Date();
   const hour = now.getHours();
-  const rank = judgeRank(state.wcode === null ? -1 : state.wcode, hour, state.temp === undefined ? null : state.temp);
+  const rank = judgeRank(state.wcode === null ? -1 : state.wcode, now, state.temp === undefined ? null : state.temp);
   return {
     t: state.tag || 'その他',
     w: document.getElementById('wordInput').value.trim(),
@@ -328,6 +347,7 @@ function buildCardData() {
     tm: `${hour}:${String(now.getMinutes()).padStart(2, '0')}`,
     p: state.place, x: state.weather, r: rank,
     q: Math.floor(Math.random() * QUOTES.length),
+    m: Math.floor(Math.random() * 3),
     n: String(Math.floor(Math.random() * 999999)).padStart(6, '0')
   };
 }
@@ -358,6 +378,138 @@ function startGiving() {
   go('home');
 }
 
+function motifSVG(rank, m, rk, id) {
+  const grad = `<defs><radialGradient id="g_${id}" cx="42%" cy="36%" r="68%"><stop offset="0%" stop-color="${rk.grad[0]}"/><stop offset="45%" stop-color="${rk.grad[1]}"/><stop offset="100%" stop-color="${rk.grad[2]}"/></radialGradient></defs>`;
+  let body = '';
+  if (rank === 'N') {
+    if (m === 0) body = `${grad}
+      <path d="M65 12 C65 12 44 42 44 54 a21 21 0 0 0 42 0 C86 42 65 12 65 12 Z" fill="url(#g_${id})"/>
+      <circle cx="57" cy="48" r="3" fill="#fff" opacity="0.8"/>
+      <ellipse cx="65" cy="84" rx="22" ry="4" fill="none" stroke="${rk.sub}" stroke-width="0.8" opacity="0.5"/>`;
+    else if (m === 1) body = `
+      <g fill="none" stroke="${rk.sub}">
+        <circle cx="65" cy="44" r="9" stroke-width="1.6"/>
+        <circle cx="65" cy="44" r="20" stroke-width="1" opacity="0.6"/>
+        <circle cx="65" cy="44" r="32" stroke-width="0.7" opacity="0.35"/>
+        <circle cx="65" cy="44" r="43" stroke-width="0.5" opacity="0.18"/>
+      </g>
+      <circle cx="65" cy="44" r="2.6" fill="${rk.color}"/>`;
+    else body = `${grad}
+      <circle cx="52" cy="54" r="15" fill="url(#g_${id})"/>
+      <circle cx="80" cy="34" r="10" fill="url(#g_${id})" opacity="0.85"/>
+      <circle cx="90" cy="58" r="6" fill="url(#g_${id})" opacity="0.7"/>
+      <circle cx="44" cy="26" r="4" fill="url(#g_${id})" opacity="0.6"/>
+      <circle cx="47" cy="49" r="2.6" fill="#fff" opacity="0.85"/>
+      <circle cx="77" cy="31" r="1.8" fill="#fff" opacity="0.8"/>`;
+  } else if (rank === 'R') {
+    if (m === 0) body = `${grad}
+      <circle cx="65" cy="42" r="24" fill="url(#g_${id})"/>
+      <ellipse cx="65" cy="46" rx="40" ry="10" fill="none" stroke="${rk.sub}" stroke-width="0.8" opacity="0.6"/>
+      <ellipse cx="65" cy="46" rx="50" ry="15" fill="none" stroke="${rk.sub}" stroke-width="0.5" opacity="0.3"/>
+      <circle cx="105" cy="46" r="1.8" fill="${rk.color}"/>
+      <circle cx="26" cy="22" r="1.2" fill="${rk.sub}" opacity="0.7"/>`;
+    else if (m === 1) body = `
+      <path d="M14 44 C 36 28, 60 58, 82 42 S 118 34, 118 34" fill="none" stroke="${rk.sub}" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M12 60 C 38 46, 64 72, 90 56 S 120 50, 120 50" fill="none" stroke="${rk.sub}" stroke-width="1" stroke-linecap="round" opacity="0.6"/>
+      <path d="M16 76 C 42 64, 68 86, 94 72 S 120 66, 120 66" fill="none" stroke="${rk.sub}" stroke-width="0.7" stroke-linecap="round" opacity="0.35"/>
+      <circle cx="82" cy="42" r="3" fill="${rk.color}"/>
+      <circle cx="36" cy="30" r="1.4" fill="${rk.sub}" opacity="0.8"/>`;
+    else body = `
+      <g stroke="${rk.sub}" stroke-width="0.7" opacity="0.55" fill="none">
+        <path d="M28 64 L52 30 L84 48 L106 18"/>
+      </g>
+      <circle cx="28" cy="64" r="3" fill="${rk.sub}"/>
+      <circle cx="52" cy="30" r="4" fill="${rk.color}"/>
+      <circle cx="84" cy="48" r="3.4" fill="${rk.sub}"/>
+      <path d="M106 10 L108.3 15.7 L114 18 L108.3 20.3 L106 26 L103.7 20.3 L98 18 L103.7 15.7 Z" fill="${rk.color}"/>
+      <circle cx="40" cy="78" r="1.3" fill="${rk.sub}" opacity="0.6"/>
+      <circle cx="96" cy="70" r="1.1" fill="${rk.sub}" opacity="0.5"/>`;
+  } else if (rank === 'SR') {
+    if (m === 0) body = `
+      <polygon points="65,14 88,32 80,66 50,66 42,32" fill="url(#g_${id})" opacity="0.25"/>
+      ${grad}
+      <polygon points="65,42 65,14 88,32" fill="${rk.grad[1]}"/>
+      <polygon points="65,42 88,32 80,66" fill="${rk.sub}"/>
+      <polygon points="65,42 80,66 50,66" fill="${rk.grad[1]}" opacity="0.8"/>
+      <polygon points="65,42 50,66 42,32" fill="${rk.sub}" opacity="0.7"/>
+      <polygon points="65,42 42,32 65,14" fill="${rk.grad[0]}"/>
+      <circle cx="58" cy="26" r="2.2" fill="#fff" opacity="0.9"/>`;
+    else if (m === 1) body = `
+      <defs><linearGradient id="pg_${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff" stop-opacity="0.9"/><stop offset="100%" stop-color="${rk.grad[1]}" stop-opacity="0.5"/></linearGradient></defs>
+      <path d="M22 46 L56 46" stroke="#fff" stroke-width="2.5" stroke-linecap="round" opacity="0.9"/>
+      <path d="M22 46 L56 46" stroke="${rk.sub}" stroke-width="0.8" stroke-linecap="round" opacity="0.4"/>
+      <polygon points="65,22 86,60 44,60" fill="url(#pg_${id})" stroke="${rk.sub}" stroke-width="1.6" stroke-linejoin="round"/>
+      <g stroke-width="2.2" stroke-linecap="round" opacity="0.85">
+        <path d="M76 44 L112 28" stroke="#e2654f"/>
+        <path d="M77 47 L114 40" stroke="#eaa54b"/>
+        <path d="M78 50 L114 52" stroke="#7fbf7f"/>
+        <path d="M77 53 L112 64" stroke="#7f9fdf"/>
+      </g>
+      <circle cx="60" cy="32" r="1.8" fill="#fff" opacity="0.9"/>`;
+    else body = `${grad}
+      <defs><linearGradient id="ct_${id}" x1="1" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${rk.grad[1]}" stop-opacity="0.75"/><stop offset="100%" stop-color="${rk.grad[1]}" stop-opacity="0"/></linearGradient></defs>
+      <path d="M86 26 C 60 34, 38 48, 16 70 C 42 58, 64 50, 90 44 Z" fill="url(#ct_${id})"/>
+      <circle cx="88" cy="34" r="12" fill="url(#g_${id})"/>
+      <circle cx="84" cy="29" r="2.2" fill="#fff" opacity="0.95"/>
+      <circle cx="46" cy="54" r="1.5" fill="${rk.sub}" opacity="0.6"/>
+      <circle cx="32" cy="62" r="1" fill="${rk.sub}" opacity="0.45"/>
+      <circle cx="60" cy="46" r="1.2" fill="${rk.sub}" opacity="0.5"/>`;
+  } else if (rank === 'UR') {
+    if (m === 0) body = `
+      <defs>
+        <linearGradient id="au1_${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${rk.grad[1]}" stop-opacity="0.9"/><stop offset="100%" stop-color="${rk.grad[1]}" stop-opacity="0.05"/></linearGradient>
+        <linearGradient id="au2_${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="${rk.bd}" stop-opacity="0.7"/><stop offset="100%" stop-color="${rk.bd}" stop-opacity="0.03"/></linearGradient>
+      </defs>
+      <path d="M18 18 C 40 8, 58 26, 80 16 C 96 9, 108 14, 114 11 L114 52 C 96 58, 80 44, 60 54 C 42 62, 28 52, 18 58 Z" fill="url(#au1_${id})"/>
+      <path d="M24 14 C 48 6, 68 22, 92 12 C 102 8, 110 11, 113 9 L113 38 C 96 44, 78 32, 56 40 C 40 46, 30 40, 24 44 Z" fill="url(#au2_${id})"/>
+      <circle cx="30" cy="74" r="1.4" fill="${rk.sub}" opacity="0.7"/>
+      <circle cx="64" cy="80" r="1.1" fill="${rk.sub}" opacity="0.5"/>
+      <circle cx="98" cy="72" r="1.5" fill="${rk.sub}" opacity="0.6"/>
+      <path d="M108 62 L109.8 66.2 L114 68 L109.8 69.8 L108 74 L106.2 69.8 L102 68 L106.2 66.2 Z" fill="${rk.sub}" opacity="0.8"/>`;
+    else if (m === 1) body = `${grad}
+      <circle cx="65" cy="44" r="9" fill="url(#g_${id})"/>
+      <path d="M65 44 C 82 36, 92 50, 82 62 C 70 74, 46 72, 38 56" fill="none" stroke="${rk.sub}" stroke-width="2.6" stroke-linecap="round" opacity="0.55"/>
+      <path d="M65 44 C 48 52, 38 38, 48 26 C 60 14, 84 16, 92 32" fill="none" stroke="${rk.sub}" stroke-width="2.6" stroke-linecap="round" opacity="0.4"/>
+      <circle cx="84" cy="62" r="1.8" fill="${rk.color}"/>
+      <circle cx="46" cy="26" r="1.5" fill="${rk.color}" opacity="0.8"/>
+      <circle cx="96" cy="38" r="1.2" fill="${rk.sub}" opacity="0.7"/>`;
+    else body = `${grad}
+      <path d="M43 60 A22 22 0 0 1 87 60 Z" fill="url(#g_${id})"/>
+      <path d="M22 60 L108 60" stroke="${rk.sub}" stroke-width="1.4" stroke-linecap="round"/>
+      <g stroke="${rk.sub}" stroke-width="1.4" stroke-linecap="round" opacity="0.8">
+        <path d="M65 28 L65 18"/>
+        <path d="M44 34 L37 26"/>
+        <path d="M86 34 L93 26"/>
+        <path d="M30 50 L20 46"/>
+        <path d="M100 50 L110 46"/>
+      </g>
+      <ellipse cx="65" cy="70" rx="20" ry="3.5" fill="${rk.grad[1]}" opacity="0.5"/>`;
+  } else {
+    if (m === 0) body = `
+      <circle cx="24" cy="24" r="1.6" fill="${rk.sub}"/>
+      <circle cx="44" cy="58" r="1.1" fill="${rk.sub}" opacity="0.7"/>
+      <circle cx="58" cy="20" r="2" fill="${rk.color}"/>
+      <circle cx="74" cy="66" r="1.4" fill="${rk.sub}" opacity="0.8"/>
+      <circle cx="96" cy="56" r="1.8" fill="${rk.sub}"/>
+      <circle cx="108" cy="24" r="1.2" fill="${rk.sub}" opacity="0.6"/>
+      <circle cx="36" cy="40" r="0.9" fill="${rk.sub}" opacity="0.5"/>
+      <circle cx="66" cy="42" r="1" fill="${rk.sub}" opacity="0.6"/>
+      <circle cx="20" cy="70" r="1" fill="${rk.sub}" opacity="0.5"/>
+      <circle cx="104" cy="74" r="0.9" fill="${rk.sub}" opacity="0.5"/>
+      <path d="M86 16 L88.5 23 L95 26 L88.5 29 L86 36 L83.5 29 L77 26 L83.5 23 Z" fill="${rk.color}"/>
+      <path d="M40 72 L41.6 76 L45 77.5 L41.6 79 L40 83 L38.4 79 L35 77.5 L38.4 76 Z" fill="${rk.sub}" opacity="0.8"/>`;
+    else if (m === 1) body = `${grad}
+      <circle cx="65" cy="44" r="21" fill="url(#g_${id})" opacity="0.95"/>
+      <circle cx="65" cy="44" r="16" fill="${rk.color}"/>
+      <circle cx="54" cy="31" r="2.2" fill="#fff" opacity="0.95"/>
+      <circle cx="30" cy="20" r="1" fill="${rk.sub}" opacity="0.6"/>
+      <circle cx="102" cy="66" r="1.2" fill="${rk.sub}" opacity="0.6"/>`;
+    else body = `
+      <circle cx="65" cy="44" r="27" fill="none" stroke="${rk.bd}" stroke-width="0.8" opacity="0.6"/>
+      <circle cx="65" cy="44" r="1.6" fill="${rk.sub}" opacity="0.8"/>`;
+  }
+  return `<svg viewBox="0 0 130 95" width="92%" aria-hidden="true">${body}</svg>`;
+}
 function cardHTML(c) {
   const rk = RANKS[c.r] || RANKS.N;
   const word = c.w || '（ひとことなし）';
@@ -371,14 +523,7 @@ function cardHTML(c) {
     <div style="position:relative; padding:18px 16px; height:100%; display:flex; flex-direction:column; text-align:center; pointer-events:none;">
       <p style="font-size:8px; letter-spacing:2.5px; color:${rk.sub}; text-align:left;">世界善行協会</p>
       <div style="flex:1; display:flex; align-items:center; justify-content:center;">
-        <svg viewBox="0 0 130 95" width="92%" aria-hidden="true">
-          <defs><radialGradient id="orb_${c.n}" cx="42%" cy="36%" r="68%"><stop offset="0%" stop-color="${rk.grad[0]}"/><stop offset="45%" stop-color="${rk.grad[1]}"/><stop offset="100%" stop-color="${rk.grad[2]}"/></radialGradient></defs>
-          <circle cx="65" cy="42" r="24" fill="url(#orb_${c.n})"/>
-          <ellipse cx="65" cy="46" rx="40" ry="10" fill="none" stroke="${rk.sub}" stroke-width="0.8" opacity="0.6"/>
-          <ellipse cx="65" cy="46" rx="50" ry="15" fill="none" stroke="${rk.sub}" stroke-width="0.5" opacity="0.3"/>
-          <circle cx="105" cy="46" r="1.8" fill="${rk.color}"/>
-          <circle cx="26" cy="22" r="1.2" fill="${rk.sub}" opacity="0.7"/>
-        </svg>
+        ${motifSVG(c.r, c.m || 0, rk, c.n)}
       </div>
       <p style="font-size:8px; letter-spacing:3px; color:${rk.sub}; margin-bottom:3px;">RANK ── ${c.r}</p>
       <p style="font-size:18px; color:${rk.color}; letter-spacing:1.5px; font-weight:600;">${rk.name}</p>
