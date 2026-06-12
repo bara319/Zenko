@@ -358,7 +358,8 @@ function cardHTML(c) {
   const when = [c.d, c.p, c.x].filter(Boolean).join(' ／ ');
   return `
   <div class="face front" style="background: ${rk.bg}; border-color: ${rk.bd};">
-    <div class="holo" style="position:absolute; inset:0; mix-blend-mode:multiply; pointer-events:none; background:linear-gradient(115deg, transparent 28%, rgba(255,170,220,0.5) 42%, ${rk.holo} 50%, rgba(255,240,160,0.5) 58%, transparent 74%);"></div>
+    <div class="holo" style="position:absolute; inset:-25% -40%; mix-blend-mode:multiply; pointer-events:none; background:linear-gradient(115deg, transparent 30%, rgba(255,150,215,0.65) 40%, ${rk.holo} 48%, rgba(255,235,140,0.6) 56%, rgba(180,160,255,0.5) 62%, transparent 72%);"></div>
+    <div class="holo2" style="position:absolute; inset:-25% -40%; mix-blend-mode:multiply; pointer-events:none; background:linear-gradient(60deg, transparent 36%, rgba(140,230,255,0.45) 47%, rgba(255,180,230,0.4) 53%, transparent 64%);"></div>
     <div style="position:absolute; inset:8px; border:0.5px solid ${rk.bd}; border-radius:10px; pointer-events:none; opacity:0.7;"></div>
     <div style="position:relative; padding:18px 16px; height:100%; display:flex; flex-direction:column; text-align:center; pointer-events:none;">
       <p style="font-size:8px; letter-spacing:2.5px; color:${rk.sub}; text-align:left;">世界善行協会</p>
@@ -418,7 +419,9 @@ function setupCard(cardEl) {
     x = Math.max(0, Math.min(1, x)); y = Math.max(0, Math.min(1, y));
     cardEl.style.transform = `rotateY(${(x - 0.5) * 15}deg) rotateX(${(0.5 - y) * 15}deg)`;
     const h = cardEl.querySelector('.holo');
-    if (h) h.style.transform = `translateX(${Math.round((x - 0.5) * 70)}px)`;
+    if (h) h.style.transform = `translateX(${Math.round((x - 0.5) * 90)}px)`;
+    const h2 = cardEl.querySelector('.holo2');
+    if (h2) h2.style.transform = `translateX(${Math.round((0.5 - x) * 60)}px) translateY(${Math.round((y - 0.5) * 30)}px)`;
   }
   wrap.addEventListener('mousemove', e => {
     const r = wrap.getBoundingClientRect();
