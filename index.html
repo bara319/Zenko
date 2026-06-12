@@ -111,7 +111,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
   </div>
   <button class="zbtn" onclick="go('tags')">善行を目撃した</button>
   <button class="zbtn ghost" style="margin-top: 9px;" onclick="go('collection')">もらったカード <span id="homeCount">0</span>枚</button>
-  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v2.3 — カードはQRを読んだ人のブラウザに届きます</p>
+  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v2.4 — カードはQRを読んだ人のブラウザに届きます</p>
 </div>
 
 <div class="scr" id="collection" style="padding: 20px 18px;">
@@ -433,7 +433,7 @@ function decodeCardOld(s) {
 
 function makeQR() {
   const data = buildCardData();
-  state.cardURL = location.origin + location.pathname + '#z=' + encodeCard(data);
+  state.cardURL = location.origin + location.pathname + '?v=2#z=' + encodeCard(data);
   const box = document.getElementById('qrbox');
   box.innerHTML = '';
   new QRCode(box, { text: state.cardURL, width: 190, height: 190, colorDark: '#0C447C', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
@@ -776,15 +776,21 @@ function reveal() {
   }
 }
 
-const mNew = location.hash.match(/#z=(.+)/);
-const mOld = location.hash.match(/#c=(.+)/);
-if (mNew) {
-  incomingCard = decodeCard(mNew[1]);
-  state.cardURL = location.href;
-} else if (mOld) {
-  incomingCard = decodeCardOld(mOld[1]);
-  state.cardURL = location.href;
+function cardFromHash() {
+  const z = location.hash.match(/#z=(.+)/);
+  const o = location.hash.match(/#c=(.+)/);
+  return z ? decodeCard(z[1]) : (o ? decodeCardOld(o[1]) : null);
 }
+window.addEventListener('hashchange', () => {
+  const card = cardFromHash();
+  if (card) {
+    incomingCard = card;
+    state.cardURL = location.href;
+    go('receive1');
+  }
+});
+incomingCard = cardFromHash();
+if (incomingCard) state.cardURL = location.href;
 if (incomingCard) {
   go('receive1');
 } else {
