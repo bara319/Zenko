@@ -46,6 +46,9 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
 .cardwrap.floating { animation: floaty 3.5s ease-in-out infinite; }
 .spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; animation: rise 1.5s ease-out forwards; pointer-events: none; }
 .night { background: linear-gradient(170deg, #0e2440, #15406e 70%, #1d5d9e); }
+.mini { aspect-ratio: 2/3; border-radius: 10px; position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; }
+.mini:active { transform: scale(0.96); }
+.mini p { margin: 0; }
 .shbtn { flex: 1; padding: 11px 6px; border-radius: 11px; border: 1px solid #BFDFF9; background: #fff; color: #185FA5; font-size: 13px; cursor: pointer; }
 .statusrow { background: #EAF4FE; border-radius: 13px; padding: 13px; margin-top: 14px; font-size: 12px; color: #185FA5; line-height: 1.7; }
 </style>
@@ -97,7 +100,21 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
     <p style="font-size: 12px; color: #8aa5bd;">あなたの「讃えたい」が、誰かの宝物になります</p>
   </div>
   <button class="zbtn" onclick="go('tags')">善行を目撃した</button>
-  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v2.0 — カードはQRを読んだ人のブラウザに届きます</p>
+  <button class="zbtn ghost" style="margin-top: 9px;" onclick="go('collection')">もらったカード <span id="homeCount">0</span>枚</button>
+  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v2.1 — カードはQRを読んだ人のブラウザに届きます</p>
+</div>
+
+<div class="scr" id="collection" style="padding: 20px 18px;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0;">
+    <button class="backlink" onclick="go('home')">‹ 戻る</button>
+    <p style="font-size: 15px; color: #0C447C; margin: 0;">もらったカード</p>
+    <span style="width: 40px;"></span>
+  </div>
+  <p style="font-size: 12px; color: #8aa5bd; text-align: center; margin: 0 0 14px; flex-shrink: 0;" id="colSub"></p>
+  <div id="colGrid" style="flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; align-content: start;"></div>
+  <div style="background: #EAF4FE; border-radius: 12px; padding: 11px 14px; margin-top: 12px; flex-shrink: 0;">
+    <p style="font-size: 12px; color: #185FA5; margin: 0;">🔒 まだ見ぬランクがあるようです…</p>
+  </div>
 </div>
 
 <div class="scr" id="tags">
@@ -237,6 +254,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
     <button class="shbtn" onclick="copyLink()">リンクをコピー</button>
   </div>
   <button class="zbtn" onclick="startGiving()">あなたも、誰かを讃えよう</button>
+  <button class="backlink" style="display: block; margin: 12px auto 0;" onclick="go('collection')">コレクションを見る</button>
 </div>
 
 </div>
@@ -264,10 +282,39 @@ const QUOTES = [
 ];
 const state = { tag: null, place: '', weather: '', wcode: null, cardURL: '' };
 
+function getCards() {
+  try { return JSON.parse(localStorage.getItem('zenko_cards') || '[]'); } catch (e) { return []; }
+}
+function saveCard(c) {
+  const arr = getCards();
+  if (!arr.some(x => x.n === c.n && x.d === c.d && x.tm === c.tm)) {
+    arr.unshift(c);
+    localStorage.setItem('zenko_cards', JSON.stringify(arr));
+  }
+}
+function renderCollection() {
+  const arr = getCards();
+  document.getElementById('colSub').textContent = arr.length ? `あなたの善行を、${arr.length}人が見ていました` : 'まだカードがありません。善行あるのみ！';
+  document.getElementById('colGrid').innerHTML = arr.map((c, i) => {
+    const rk = RANKS[c.r] || RANKS.N;
+    return `<div class="mini" style="background:${rk.bg}; border:1px solid ${rk.bd};" onclick="openCard(${i})">
+      <div style="width:86%;">${motifSVG(c.r, c.m || 0, rk, 'col' + i)}</div>
+      <p style="font-size:6px; letter-spacing:1.5px; color:${rk.sub};">RANK ${c.r === 'SE' ? 'SECRET' : c.r}</p>
+      <p style="font-size:10px; color:${rk.color};">${rk.name}</p>
+      <p style="font-size:7px; color:${rk.sub};">${c.d}${c.p ? ' ／ ' + c.p : ''}</p>
+    </div>`;
+  }).join('');
+}
+function openCard(i) {
+  incomingCard = getCards()[i];
+  reveal();
+}
 function go(id) {
   document.querySelectorAll('.scr').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   window.scrollTo(0, 0);
+  if (id === 'collection') renderCollection();
+  if (id === 'home') document.getElementById('homeCount').textContent = getCards().length;
 }
 function pickTag(el) {
   state.tag = el.dataset.tag;
@@ -649,6 +696,7 @@ function sparks() {
 
 let incomingCard = null;
 function reveal() {
+  saveCard(incomingCard);
   const card = document.getElementById('rcvCard');
   card.innerHTML = cardHTML(incomingCard);
   card.style.animation = 'pop 0.9s ease-out';
