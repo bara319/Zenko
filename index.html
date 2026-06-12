@@ -91,7 +91,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
     <p style="font-size: 12px; color: #8aa5bd;">あなたの「讃えたい」が、誰かの宝物になります</p>
   </div>
   <button class="zbtn" onclick="go('tags')">善行を目撃した</button>
-  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.3 — カードはQRを読んだ人のブラウザに届きます</p>
+  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.4 — カードはQRを読んだ人のブラウザに届きます</p>
 </div>
 
 <div class="scr" id="tags">
@@ -223,7 +223,8 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
       <div class="card3d" id="rcvCard" style="width: 100%; height: 100%;"></div>
     </div>
   </div>
-  <p style="font-size: 12px; color: #8aa5bd; text-align: center; margin-bottom: 12px;" id="rcvHint">なぞるとキラ ／ タップでめくる</p>
+  <p style="font-size: 12px; color: #8aa5bd; text-align: center; margin-bottom: 12px;" id="rcvHint">なぞるとキラります</p>
+  <button class="zbtn ghost" id="flipBtn" style="margin-bottom: 9px;" onclick="window.zenkoFlip && window.zenkoFlip()">カードをめくる</button>
   <button class="zbtn ghost" id="gyroBtn" style="display: none; margin-bottom: 9px;">📱 傾きでキラらせる</button>
   <div style="display: flex; gap: 9px; margin-bottom: 9px;">
     <button class="shbtn" onclick="shareCard()">共有する</button>
@@ -443,7 +444,10 @@ function setupCard(cardEl) {
     flipped = !flipped;
     cardEl.style.animation = 'none';
     cardEl.style.transform = flipped ? 'rotateY(180deg)' : 'none';
+    const fb = document.getElementById('flipBtn');
+    if (fb) fb.textContent = flipped ? '表にもどす' : 'カードをめくる';
   }
+  window.zenkoFlip = toggleFlip;
   wrap.addEventListener('click', toggleFlip);
   let ts = null;
   wrap.addEventListener('touchstart', e => {
@@ -493,7 +497,7 @@ function reveal() {
         const res = await DeviceOrientationEvent.requestPermission();
         if (res === 'granted') {
           b.style.display = 'none';
-          document.getElementById('rcvHint').textContent = '傾けるとキラ ／ タップでめくる';
+          document.getElementById('rcvHint').textContent = '傾けるとキラります';
         }
       } catch (e) {}
     };
