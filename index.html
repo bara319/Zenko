@@ -91,7 +91,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
     <p style="font-size: 12px; color: #8aa5bd;">あなたの「讃えたい」が、誰かの宝物になります</p>
   </div>
   <button class="zbtn" onclick="go('tags')">善行を目撃した</button>
-  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 — カードはQRを読んだ人のブラウザに届きます</p>
+  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.2 — カードはQRを読んだ人のブラウザに届きます</p>
 </div>
 
 <div class="scr" id="tags">
@@ -435,7 +435,11 @@ function setupCard(cardEl) {
     shine((p.clientX - r.left) / r.width, (p.clientY - r.top) / r.height);
   }, { passive: false });
   wrap.addEventListener('mouseleave', () => { if (!flipped) cardEl.style.transform = 'none'; });
+  let lastToggle = 0;
   function toggleFlip() {
+    const now = Date.now();
+    if (now - lastToggle < 400) return;
+    lastToggle = now;
     flipped = !flipped;
     cardEl.style.animation = 'none';
     cardEl.style.transform = flipped ? 'rotateY(180deg)' : 'none';
@@ -449,10 +453,7 @@ function setupCard(cardEl) {
     if (!ts) return;
     const p = e.changedTouches[0];
     const moved = Math.hypot(p.clientX - ts.x, p.clientY - ts.y);
-    if (moved < 12 && Date.now() - ts.t < 500) {
-      e.preventDefault();
-      toggleFlip();
-    }
+    if (moved < 15 && Date.now() - ts.t < 600) toggleFlip();
     ts = null;
   });
   window.addEventListener('deviceorientation', e => {
