@@ -428,16 +428,32 @@ function setupCard(cardEl) {
     shine((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
   });
   wrap.addEventListener('touchmove', e => {
+    if (flipped) return;
     e.preventDefault();
     const r = wrap.getBoundingClientRect();
     const p = e.touches[0];
     shine((p.clientX - r.left) / r.width, (p.clientY - r.top) / r.height);
   }, { passive: false });
   wrap.addEventListener('mouseleave', () => { if (!flipped) cardEl.style.transform = 'none'; });
-  wrap.addEventListener('click', () => {
+  function toggleFlip() {
     flipped = !flipped;
     cardEl.style.animation = 'none';
     cardEl.style.transform = flipped ? 'rotateY(180deg)' : 'none';
+  }
+  wrap.addEventListener('click', toggleFlip);
+  let ts = null;
+  wrap.addEventListener('touchstart', e => {
+    ts = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+  }, { passive: true });
+  wrap.addEventListener('touchend', e => {
+    if (!ts) return;
+    const p = e.changedTouches[0];
+    const moved = Math.hypot(p.clientX - ts.x, p.clientY - ts.y);
+    if (moved < 12 && Date.now() - ts.t < 500) {
+      e.preventDefault();
+      toggleFlip();
+    }
+    ts = null;
   });
   window.addEventListener('deviceorientation', e => {
     if (e.gamma === null || flipped) return;
