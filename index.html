@@ -31,7 +31,7 @@ body { font-family: -apple-system, "Hiragino Sans", sans-serif; background: #F4F
 .bubble:before { content: ""; position: absolute; left: 50%; top: -13px; transform: translateX(-50%); border: 7px solid transparent; border-bottom-color: #185FA5; }
 .backlink { font-size: 14px; color: #185FA5; cursor: pointer; background: none; border: none; padding: 0; }
 textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding: 13px; font-size: 16px; background: #fff; color: #0C447C; resize: none; font-family: inherit; }
-.cardwrap { perspective: 900px; }
+.cardwrap { perspective: 900px; touch-action: none; }
 .card3d { position: relative; transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.4,0.1,0.2,1); }
 .face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 15px; overflow: hidden; border: 1px solid; }
 .face.back { transform: rotateY(180deg); }
@@ -91,7 +91,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
     <p style="font-size: 12px; color: #8aa5bd;">あなたの「讃えたい」が、誰かの宝物になります</p>
   </div>
   <button class="zbtn" onclick="go('tags')">善行を目撃した</button>
-  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.2 — カードはQRを読んだ人のブラウザに届きます</p>
+  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.3 — カードはQRを読んだ人のブラウザに届きます</p>
 </div>
 
 <div class="scr" id="tags">
@@ -428,8 +428,8 @@ function setupCard(cardEl) {
     shine((e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
   });
   wrap.addEventListener('touchmove', e => {
-    if (flipped) return;
     e.preventDefault();
+    if (flipped) return;
     const r = wrap.getBoundingClientRect();
     const p = e.touches[0];
     shine((p.clientX - r.left) / r.width, (p.clientY - r.top) / r.height);
@@ -453,7 +453,7 @@ function setupCard(cardEl) {
     if (!ts) return;
     const p = e.changedTouches[0];
     const moved = Math.hypot(p.clientX - ts.x, p.clientY - ts.y);
-    if (moved < 15 && Date.now() - ts.t < 600) toggleFlip();
+    if (moved < 25 && Date.now() - ts.t < 700) toggleFlip();
     ts = null;
   });
   window.addEventListener('deviceorientation', e => {
