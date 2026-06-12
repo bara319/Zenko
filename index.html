@@ -32,12 +32,17 @@ body { font-family: -apple-system, "Hiragino Sans", sans-serif; background: #F4F
 .backlink { font-size: 14px; color: #185FA5; cursor: pointer; background: none; border: none; padding: 0; }
 textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding: 13px; font-size: 16px; background: #fff; color: #0C447C; resize: none; font-family: inherit; }
 .cardwrap { perspective: 900px; touch-action: none; }
-.card3d { position: relative; transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.4,0.1,0.2,1); }
-.face { position: absolute; inset: 0; backface-visibility: hidden; border-radius: 15px; overflow: hidden; border: 1px solid; }
-.face.back { transform: rotateY(180deg); }
+.card3d { position: relative; -webkit-transform-style: preserve-3d; transform-style: preserve-3d; transition: transform 0.7s cubic-bezier(0.4,0.1,0.2,1), -webkit-transform 0.7s cubic-bezier(0.4,0.1,0.2,1); }
+.face { position: absolute; inset: 0; -webkit-backface-visibility: hidden; backface-visibility: hidden; border-radius: 15px; overflow: hidden; border: 1px solid; }
+.face.back { -webkit-transform: rotateY(180deg); transform: rotateY(180deg); }
 @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
 @keyframes pop { 0% { transform: scale(0.3) rotateY(180deg); opacity: 0; } 60% { transform: scale(1.06) rotateY(-8deg); opacity: 1; } 100% { transform: scale(1) rotateY(0); opacity: 1; } }
 @keyframes rise { 0% { transform: translateY(0); opacity: 1; } 100% { transform: translateY(-110px); opacity: 0; } }
+@keyframes shimmer { 0% { transform: translateX(-60px); } 45% { transform: translateX(60px); } 55% { transform: translateX(55px); } 100% { transform: translateX(-60px); } }
+@keyframes floaty { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+.idle .holo { animation: shimmer 4.5s ease-in-out infinite; }
+.idle .holo2 { animation: shimmer 4.5s ease-in-out -2.2s infinite reverse; }
+.cardwrap.floating { animation: floaty 3.5s ease-in-out infinite; }
 .spark { position: absolute; width: 7px; height: 7px; border-radius: 50%; animation: rise 1.5s ease-out forwards; pointer-events: none; }
 .night { background: linear-gradient(170deg, #0e2440, #15406e 70%, #1d5d9e); }
 .shbtn { flex: 1; padding: 11px 6px; border-radius: 11px; border: 1px solid #BFDFF9; background: #fff; color: #185FA5; font-size: 13px; cursor: pointer; }
@@ -91,7 +96,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
     <p style="font-size: 12px; color: #8aa5bd;">あなたの「讃えたい」が、誰かの宝物になります</p>
   </div>
   <button class="zbtn" onclick="go('tags')">善行を目撃した</button>
-  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.4 — カードはQRを読んだ人のブラウザに届きます</p>
+  <p style="font-size: 11px; color: #8aa5bd; text-align: center; margin-top: 12px; flex-shrink: 0;">試し版 v1.6 — カードはQRを読んだ人のブラウザに届きます</p>
 </div>
 
 <div class="scr" id="tags">
@@ -223,9 +228,7 @@ textarea { width: 100%; border-radius: 13px; border: 1px solid #BFDFF9; padding:
       <div class="card3d" id="rcvCard" style="width: 100%; height: 100%;"></div>
     </div>
   </div>
-  <p style="font-size: 12px; color: #8aa5bd; text-align: center; margin-bottom: 12px;" id="rcvHint">なぞるとキラります</p>
-  <button class="zbtn ghost" id="flipBtn" style="margin-bottom: 9px;" onclick="window.zenkoFlip && window.zenkoFlip()">カードをめくる</button>
-  <button class="zbtn ghost" id="gyroBtn" style="display: none; margin-bottom: 9px;">📱 傾きでキラらせる</button>
+  <p style="font-size: 12px; color: #8aa5bd; text-align: center; margin-bottom: 12px;" id="rcvHint">なぞるとキラ ／ タップでめくる</p>
   <div style="display: flex; gap: 9px; margin-bottom: 9px;">
     <button class="shbtn" onclick="shareCard()">共有する</button>
     <button class="shbtn" onclick="copyLink()">リンクをコピー</button>
@@ -417,6 +420,7 @@ function setupCard(cardEl) {
   const wrap = cardEl.parentElement;
   function shine(x, y) {
     if (flipped) return;
+    cardEl.classList.remove('idle');
     x = Math.max(0, Math.min(1, x)); y = Math.max(0, Math.min(1, y));
     cardEl.style.transform = `rotateY(${(x - 0.5) * 15}deg) rotateX(${(0.5 - y) * 15}deg)`;
     const h = cardEl.querySelector('.holo');
@@ -435,7 +439,19 @@ function setupCard(cardEl) {
     const p = e.touches[0];
     shine((p.clientX - r.left) / r.width, (p.clientY - r.top) / r.height);
   }, { passive: false });
-  wrap.addEventListener('mouseleave', () => { if (!flipped) cardEl.style.transform = 'none'; });
+  wrap.addEventListener('mouseleave', () => {
+    if (!flipped) {
+      cardEl.style.transform = 'none';
+      cardEl.querySelectorAll('.holo, .holo2').forEach(h => h.style.transform = '');
+      cardEl.classList.add('idle');
+    }
+  });
+  function syncFaces() {
+    cardEl.querySelectorAll('.face').forEach(f => {
+      const isBack = f.classList.contains('back');
+      f.style.visibility = (flipped === isBack) ? 'visible' : 'hidden';
+    });
+  }
   let lastToggle = 0;
   function toggleFlip() {
     const now = Date.now();
@@ -444,10 +460,11 @@ function setupCard(cardEl) {
     flipped = !flipped;
     cardEl.style.animation = 'none';
     cardEl.style.transform = flipped ? 'rotateY(180deg)' : 'none';
-    const fb = document.getElementById('flipBtn');
-    if (fb) fb.textContent = flipped ? '表にもどす' : 'カードをめくる';
+    if (!flipped) cardEl.classList.add('idle');
+    setTimeout(syncFaces, 350);
   }
   window.zenkoFlip = toggleFlip;
+  syncFaces();
   wrap.addEventListener('click', toggleFlip);
   let ts = null;
   wrap.addEventListener('touchstart', e => {
@@ -487,20 +504,14 @@ function reveal() {
   card.innerHTML = cardHTML(incomingCard);
   card.style.animation = 'pop 0.9s ease-out';
   setupCard(card);
+  card.classList.add('idle');
+  card.parentElement.classList.add('floating');
   go('receive2');
   sparks();
   if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-    const b = document.getElementById('gyroBtn');
-    b.style.display = 'block';
-    b.onclick = async () => {
-      try {
-        const res = await DeviceOrientationEvent.requestPermission();
-        if (res === 'granted') {
-          b.style.display = 'none';
-          document.getElementById('rcvHint').textContent = '傾けるとキラります';
-        }
-      } catch (e) {}
-    };
+    DeviceOrientationEvent.requestPermission().then(res => {
+      if (res === 'granted') document.getElementById('rcvHint').textContent = '傾けるとキラ ／ タップでめくる';
+    }).catch(() => {});
   }
 }
 
